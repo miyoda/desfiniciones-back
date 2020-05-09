@@ -1,4 +1,4 @@
-import { SubscribeMessage, WebSocketGateway } from '@nestjs/websockets';
+import { SubscribeMessage, WebSocketGateway, WsException } from '@nestjs/websockets';
 import { DefineRequest } from 'src/entity/define';
 import { Room } from 'src/entity/room';
 import { RoomService } from '../service/room.service';
@@ -13,13 +13,14 @@ export class DefineGateway {
     console.log('define', defineRequest);
     const room = this.roomService.getRoom(defineRequest.roomId);
     if (room.status !== 'defining') {
-      throw new Error('Definition not expected in status' + room.status);
+      throw new WsException('Definition not expected in status' + room.status);
     }
     room.users[defineRequest.userSecret].definition = this.fixDefinition(defineRequest.definition);
+    room.users[defineRequest.userSecret].ready = true;
 
-    const changeStatus = this.tryStartVoting(room);
+    this.tryStartVoting(room);
 
-    this.roomService.save(room, changeStatus ? socket : undefined);
+    this.roomService.save(room, socket);
   }
 
   private fixDefinition(str) {
@@ -31,16 +32,15 @@ export class DefineGateway {
   }
 
   private tryStartVoting(room: Room): boolean {
-    for (const userSecret of Object.keys(room.users)) {
-      if (!room.users[userSecret].definition) {
-        return false;
-      }
+    if (this.roomService.getConnectedUnreadyUsers(room).length > 0) {
+        return false; // There are connected users pending to define
     }
     this.startVoting(room);
     return true;
   }
 
   private startVoting(room: Room): void {
+    this.roomService.getConnectedUsers(room).forEach(user => user.ready = false);
     room.status = 'voting';
   }
 }

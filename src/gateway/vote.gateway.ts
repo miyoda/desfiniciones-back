@@ -1,4 +1,4 @@
-import { SubscribeMessage, WebSocketGateway } from '@nestjs/websockets';
+import { SubscribeMessage, WebSocketGateway, WsException } from '@nestjs/websockets';
 import { Room, User } from 'src/entity/room';
 import { DefinitionResult, RoundResults } from 'src/entity/round-results';
 import { VoteRequest } from 'src/entity/vote';
@@ -18,23 +18,22 @@ export class VoteGateway {
     console.log('vote', voteRequest);
     const room = this.roomService.getRoom(voteRequest.roomId);
     if (room.status !== 'voting') {
-      throw new Error('Vote not expected in status' + room.status);
+      throw new WsException('Vote not expected in status' + room.status);
     }
     if (room.users[voteRequest.userSecret].definition === voteRequest.definition) {
-      throw new Error('Can\'t vote your definition');
+      throw new WsException('You can\'t vote your definition');
     }
     room.users[voteRequest.userSecret].vote = voteRequest.definition;
+    room.users[voteRequest.userSecret].ready = true;
 
-    const changeStatus = this.tryFinishGame(room, socket);
+    this.tryFinishGame(room, socket);
 
-    this.roomService.save(room, changeStatus ? socket : undefined);
+    this.roomService.save(room, socket);
   }
 
   private tryFinishGame(room: Room, socket: SocketIO.Socket): boolean {
-    for (const userSecret of Object.keys(room.users)) {
-      if (!room.users[userSecret].vote) {
-        return false;
-      }
+    if (this.roomService.getConnectedUnreadyUsers(room).length > 0) {
+        return false; // There are connected users pending to vote
     }
     this.finishGame(room, socket);
     return true;
@@ -45,9 +44,11 @@ export class VoteGateway {
       definitions: [],
     };
     roundResults.definitions.push(this.processDefinition(room, room.definition, undefined));
-    for (const userSecret of Object.keys(room.users)) {
-      roundResults.definitions.push(this.processDefinition(room, room.users[userSecret].definition, room.users[userSecret]));
-    }
+    this.roomService.getUsers(room).forEach(user => {
+      if (user.definition) {
+        roundResults.definitions.push(this.processDefinition(room, user.definition, user));
+      }
+    });
 
     this.nextRound(room);
 
@@ -73,16 +74,17 @@ export class VoteGateway {
       author: author ? author.username : undefined,
       voters: [],
     };
-    for (const userSecret of Object.keys(room.users)) {
-        if (room.users[userSecret].vote === definition) {
-          definitionResult.voters.push(room.users[userSecret].username);
-          if (author) { // Puntos para el autor
-            author.points++;
-          } else { // Acertó la buena. Puntos para él.
-            room.users[userSecret].points++;
-          }
+    this.roomService.getUsers(room).forEach(user => {
+      if (user.vote === definition) {
+        definitionResult.voters.push(user.username);
+        if (author) { // Puntos para el autor
+          author.points++;
+        } else { // Acertó la buena. Puntos para él.
+          user.points++;
         }
-    }
+      }
+    });
+
     return definitionResult;
   }
 }

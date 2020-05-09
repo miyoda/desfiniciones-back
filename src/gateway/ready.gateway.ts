@@ -24,19 +24,21 @@ export class ReadyGateway {
   }
 
   public tryStartGame(room: Room): void {
-    const userSecrets = Object.keys(room.users);
-    if (userSecrets.length < 2 || room.status !== 'unready') {
-      return;
+    if (room.status !== 'unready') {
+      return; // Already started
     }
-    for (const userSecret of userSecrets) {
-      if (!room.users[userSecret].ready && room.users[userSecret].connectedSocket) {
-        return;
-      }
+    const connectedUsers = this.roomService.getConnectedUsers(room);
+    if (connectedUsers.length < 2) {
+      return; // NOT at least two player
+    }
+    if (connectedUsers.filter(user => !user.ready).length > 0) {
+      return; // NOT all players ready
     }
     this.startGame(room);
   }
 
   private startGame(room: Room): void {
+    this.roomService.getConnectedUsers(room).forEach(user => user.ready = false);
     room.status = 'defining';
     room.word = this.getRandomWord();
     room.definition = WORDS[room.word];
