@@ -1,0 +1,112 @@
+<html>
+
+<head>
+    <script src="socket.io.js"></script>
+</head>
+
+<body>
+    <h3>Actions:</h3>
+    <div id="actions" style="display: none">
+        <input type="text" id="room_id" value="AAAAA" onkeyup="updateRoomId()"/>
+        <button onclick="create()">Create</button>
+        <button onclick="join()">Join</button>
+        <button onclick="ready()">Ready</button>
+        <button onclick="define()">Define</button>
+        <button onclick="vote()">Vote</button>
+    </div>
+    <h3>Room:</h3>
+    <div id="room_status">
+
+    </div>
+    <h3>Results:</h3>
+    <div id="results">
+
+    </div>
+    <br/>
+
+    <script>
+        let userSecret = sessionStorage.getItem('userSecret');
+        if (!userSecret) {
+            userSecret = generateUuidv4();
+            sessionStorage.setItem('userSecret', userSecret)
+        }
+        const username = generateString(10);
+        
+        var roomId;
+        var room = undefined;
+
+        // const socket = io('http://localhost:3000');
+        const socket = io('https://desfiniciones-back.herokuapp.com');
+        socket.on('connect', function () {
+            console.log('Connected');
+            
+            window.document.getElementById("actions").style = "display: block";
+        });
+        socket.on('room', function (roomStatus) {
+            console.log('room', roomStatus);
+            window.document.getElementById('room_status').innerHTML = JSON.stringify(roomStatus);
+            room = roomStatus;
+        });
+        socket.on('results', function (results) {
+            console.log('results', results);
+            window.document.getElementById('results').innerHTML = JSON.stringify(results);
+        });
+        socket.on('exception', function (data) {
+            console.log('Exception', data);
+        });
+        socket.on('disconnect', function (error) {
+            console.log('Disconnected', error);
+
+            window.document.getElementById("actions").style = "display: none";
+        });
+
+        function generateUuidv4() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function generateString(numChars) {
+            let text = '';
+            const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            for (let i = 0; i < numChars; i++) {
+                text += possible.charAt(Math.floor(Math.random() * possible.length));
+            }
+            return text;
+        }
+
+        function randomElement(myArray) {
+            return myArray[Math.floor(Math.random() * myArray.length)];
+        }
+
+        function updateRoomId() {
+            roomId = document.getElementById("room_id").value;
+        }
+        updateRoomId();
+
+        function create() {
+            socket.emit('create', { roomId: roomId });
+            join();
+        }
+
+        function join() {
+            socket.emit('join', { roomId: roomId, userSecret: userSecret, username: username });
+        }
+
+        function ready() {
+            socket.emit('ready', { roomId: roomId, userSecret: userSecret});
+        }
+
+        function define() {
+            socket.emit('define', { roomId: roomId, userSecret: userSecret, definition: generateString(100)});
+        }
+
+        function vote() {
+            socket.emit('vote', { roomId: roomId, userSecret: userSecret, definition: randomElement(room.definitions)});
+        }
+        
+    </script>
+</body>
+
+</html>
