@@ -21,7 +21,7 @@ export class VoteGateway {
       throw new WsException('Vote not expected in status' + room.status);
     }
     if (room.users[voteRequest.userSecret].definition === voteRequest.definition) {
-      throw new WsException('You can\'t vote your definition');
+      throw new WsException('No puedes votar tu propia definición');
     }
     room.users[voteRequest.userSecret].vote = voteRequest.definition;
     room.users[voteRequest.userSecret].ready = true;

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { WsException } from '@nestjs/websockets';
 import { PublicRoom } from 'src/entity/public.room';
 import { Room, User } from 'src/entity/room';
 
@@ -10,7 +11,7 @@ export class RoomService {
   getRoom(roomId: string): Room {
     const room = this.rooms[roomId];
     if (room === undefined) {
-      throw new Error('Room not found');
+      throw new WsException('Partida no encontrada');
     }
     return room;
   }

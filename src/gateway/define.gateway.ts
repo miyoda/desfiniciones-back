@@ -15,20 +15,12 @@ export class DefineGateway {
     if (room.status !== 'defining') {
       throw new WsException('Definition not expected in status' + room.status);
     }
-    room.users[defineRequest.userSecret].definition = this.fixDefinition(defineRequest.definition);
+    room.users[defineRequest.userSecret].definition = defineRequest.definition;
     room.users[defineRequest.userSecret].ready = true;
 
     this.tryStartVoting(room);
 
     this.roomService.save(room, socket);
-  }
-
-  private fixDefinition(str) {
-    str = str.charAt(0).toUpperCase() + str.slice(1);
-    if (str.charAt(str.length - 1) === '.') {
-      str = str.substring(0, str.length - 1);
-    }
-    return str;
   }
 
   private tryStartVoting(room: Room): boolean {
