@@ -23,8 +23,7 @@ export class ConnectionGateway implements OnGatewayConnection, OnGatewayDisconne
     for (const roomId of Object.keys(rooms)) {
       const room = rooms[roomId];
       let roomChange: boolean = false;
-      for (const userSecret of Object.keys(rooms[roomId].users)) {
-        const user = room.users[userSecret];
+      for (const user of this.roomService.getUsers(room)) {
         if (user.connectedSocket === socket.client.id) {
           user.connectedSocket = '';
           roomChange = true;
