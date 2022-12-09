@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@nestjs/common": "^5.4.0",
-    "@nestjs/core": "^5.4.0",
+    "@nestjs/core": "^9.2.1",
     "@nestjs/microservices": "^5.4.0",
     "@nestjs/testing": "^5.4.0",
     "@nestjs/websockets": "^5.4.0",
